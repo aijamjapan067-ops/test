@@ -15,20 +15,13 @@
             margin: 0;
             background-color: #f0f0f0;
         }
-        h1 {
-            color: #333;
-        }
+        h1 { color: #333; }
         #canvas-container {
             border: 5px solid #333;
             background-color: #fff;
-            touch-action: none;
         }
-        canvas {
-            display: block;
-        }
-        .buttons {
-            margin-top: 20px;
-        }
+        canvas { display: block; }
+        .buttons { margin-top: 20px; }
         button {
             font-size: 1.2em;
             padding: 10px 20px;
@@ -38,7 +31,6 @@
             background-color: #fff;
             color: #007bff;
             cursor: pointer;
-            transition: all 0.2s;
         }
         button:hover {
             background-color: #007bff;
@@ -59,104 +51,75 @@
         <canvas id="draw-canvas" width="280" height="280"></canvas>
     </div>
     <div class="buttons">
-        <button id="predict-btn">判定</button>
-        <button id="clear-btn">クリア</button>
+        <button onclick="predictDigit()">判定</button>
+        <button onclick="clearCanvas()">クリア</button>
     </div>
-    <div id="result">
-        <p>ここに結果が表示されます</p>
-    </div>
+    <div id="result">ここに結果が表示されます</div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-        const canvas = document.getElementById('draw-canvas');
-        const ctx = canvas.getContext('2d');
-        const predictBtn = document.getElementById('predict-btn');
-        const clearBtn = document.getElementById('clear-btn');
-        const resultDiv = document.getElementById('result');
+        let canvas, ctx, isDrawing = false, lastX = 0, lastY = 0;
+        
+        window.onload = function() {
+            canvas = document.getElementById('draw-canvas');
+            ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 20;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
 
-        let isDrawing = false;
-        let lastX = 0;
-        let lastY = 0;
+            canvas.onmousedown = startDrawing;
+            canvas.onmousemove = draw;
+            canvas.onmouseup = () => isDrawing = false;
+            canvas.onmouseout = () => isDrawing = false;
+        };
 
-        // --- Canvas setup ---
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = "white";
-        ctx.lineWidth = 20; // Fat lines for easier recognition
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            lastX = e.clientX - rect.left;
+            lastY = e.clientY - rect.top;
+        }
 
         function draw(e) {
             if (!isDrawing) return;
-            if (e.preventDefault) e.preventDefault(); // prevent scrolling
             const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0)) - rect.left;
-            const y = (e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0)) - rect.top;
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
 
             ctx.beginPath();
             ctx.moveTo(lastX, lastY);
             ctx.lineTo(x, y);
             ctx.stroke();
-            [lastX, lastY] = [x, y];
+            lastX = x;
+            lastY = y;
         }
-        
-        function startDrawing(e) {
-            isDrawing = true;
-            const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0)) - rect.left;
-            const y = (e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0)) - rect.top;
-            [lastX, lastY] = [x, y];
-        }
-
-        canvas.addEventListener('mousedown', startDrawing);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', () => isDrawing = false);
-        canvas.addEventListener('mouseout', () => isDrawing = false);
-
-        // For touch devices
-        canvas.addEventListener('touchstart', startDrawing);
-        canvas.addEventListener('touchmove', draw);
-        canvas.addEventListener('touchend', () => isDrawing = false);
-
 
         function clearCanvas() {
             ctx.fillStyle = "black";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            resultDiv.innerHTML = "<p>ここに結果が表示されます</p>";
+            document.getElementById('result').innerHTML = "ここに結果が表示されます";
         }
 
         async function predictDigit() {
             const imageData = canvas.toDataURL('image/png');
-            resultDiv.innerHTML = "<p>判定中...</p>";
+            document.getElementById('result').innerHTML = "判定中...";
 
             try {
                 const response = await fetch('/predict', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ image_data: imageData }),
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image_data: imageData })
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
                 const data = await response.json();
-                resultDiv.innerHTML = `<p>予測結果: ${data.prediction}</p>`;
-
+                document.getElementById('result').innerHTML = `予測結果: ${data.prediction}`;
             } catch (error) {
-                console.error('Error during prediction:', error);
-                resultDiv.innerHTML = `<p>エラーが発生しました。</p>`;
+                document.getElementById('result').innerHTML = "エラーが発生しました";
             }
         }
-
-        clearBtn.addEventListener('click', clearCanvas);
-        predictBtn.addEventListener('click', predictDigit);
-
-        // Initial clear
-        clearCanvas();
-        });
     </script>
 </body>
 </html>
