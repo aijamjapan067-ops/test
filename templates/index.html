@@ -67,6 +67,7 @@
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', function() {
         const canvas = document.getElementById('draw-canvas');
         const ctx = canvas.getContext('2d');
         const predictBtn = document.getElementById('predict-btn');
@@ -155,6 +156,7 @@
 
         // Initial clear
         clearCanvas();
+        });
     </script>
 </body>
 </html>
