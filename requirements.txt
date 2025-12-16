@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+scikit-learn
+numpy
+python-multipart
+jinja2
+opencv-python-headless
+gunicorn

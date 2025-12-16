@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手書き数字認識</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            color: #333;
+        }
+        #canvas-container {
+            border: 5px solid #333;
+            background-color: #fff;
+            touch-action: none;
+        }
+        canvas {
+            display: block;
+        }
+        .buttons {
+            margin-top: 20px;
+        }
+        button {
+            font-size: 1.2em;
+            padding: 10px 20px;
+            margin: 0 10px;
+            border-radius: 5px;
+            border: 2px solid #007bff;
+            background-color: #fff;
+            color: #007bff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background-color: #007bff;
+            color: #fff;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 1.5em;
+            color: #333;
+            font-weight: bold;
+            height: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>手書き数字認識 AI</h1>
+    <div id="canvas-container">
+        <canvas id="draw-canvas" width="280" height="280"></canvas>
+    </div>
+    <div class="buttons">
+        <button id="predict-btn">判定</button>
+        <button id="clear-btn">クリア</button>
+    </div>
+    <div id="result">
+        <p>ここに結果が表示されます</p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('draw-canvas');
+        const ctx = canvas.getContext('2d');
+        const predictBtn = document.getElementById('predict-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const resultDiv = document.getElementById('result');
+
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        // --- Canvas setup ---
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 20; // Fat lines for easier recognition
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault(); // prevent scrolling
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            [lastX, lastY] = [x, y];
+        }
+        
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            [lastX, lastY] = [x, y];
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('mouseout', () => isDrawing = false);
+
+        // For touch devices
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', () => isDrawing = false);
+
+
+        function clearCanvas() {
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            resultDiv.innerHTML = "<p>ここに結果が表示されます</p>";
+        }
+
+        async function predictDigit() {
+            const imageData = canvas.toDataURL('image/png');
+            resultDiv.innerHTML = "<p>判定中...</p>";
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ image_data: imageData }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                resultDiv.innerHTML = `<p>予測結果: ${data.prediction}</p>`;
+
+            } catch (error) {
+                console.error('Error during prediction:', error);
+                resultDiv.innerHTML = `<p>エラーが発生しました。</p>`;
+            }
+        }
+
+        clearBtn.addEventListener('click', clearCanvas);
+        predictBtn.addEventListener('click', predictDigit);
+
+        // Initial clear
+        clearCanvas();
+    </script>
+</body>
+</html>
